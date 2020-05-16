@@ -18,6 +18,20 @@ namespace SpriteKind {
     export const Coin = SpriteKind.create()
     export const Flier = SpriteKind.create()
 }
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Bumper, function (sprite, otherSprite) {
+    if (sprite.vy > 0 && !(sprite.isHittingTile(CollisionDirection.Bottom)) || sprite.y < otherSprite.top) {
+        otherSprite.destroy(effects.ashes, 250)
+        otherSprite.vy = -50
+        sprite.vy = -2 * pixelsToMeters
+        info.changeScoreBy(1)
+        music.powerUp.play()
+    } else {
+        info.changeLifeBy(-1)
+        sprite.say("Ow!", invincibilityPeriod)
+        music.powerDown.play()
+    }
+    pause(invincibilityPeriod)
+})
 function initializeAnimations () {
     initializeHeroAnimations()
     initializeCoinAnimation()
@@ -64,6 +78,9 @@ function giveIntroduction () {
     showInstruction("Jump with the up or A button.")
     showInstruction("Double jump by pressing jump again.")
 }
+controller.up.onEvent(ControllerButtonEvent.Pressed, function () {
+    attemptJump()
+})
 function initializeCoinAnimation () {
     coinAnimation = animation.createAnimation(ActionKind.Idle, 200)
     coinAnimation.addAnimationFrame(img`
@@ -193,6 +210,12 @@ function initializeCoinAnimation () {
 . . . . . . . . . . . . . . . . 
 `)
 }
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Coin, function (sprite, otherSprite) {
+    otherSprite.destroy(effects.trail, 250)
+    otherSprite.y += -3
+    info.changeScoreBy(3)
+    music.baDing.play()
+})
 function attemptJump () {
     // else if: either fell off a ledge, or double jumping
     if (hero.isHittingTile(CollisionDirection.Bottom)) {
@@ -327,10 +350,8 @@ function initializeFlierAnimations () {
 . . . . . . . . . . . . . . . . 
 `)
 }
-controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (!(hero.isHittingTile(CollisionDirection.Bottom))) {
-        hero.vy += 80
-    }
+controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
+    attemptJump()
 })
 function animateRun () {
     mainRunLeft = animation.createAnimation(ActionKind.RunningLeft, 100)
@@ -885,10 +906,7 @@ e d e e e e e e e d e e e e e e
 `, true)
 }
 function animateJumps () {
-    // Because there isn't currently an easy way to say
-    // "play this animation a single time and stop at the
-    // end", this just adds a bunch of the same frame at
-    // the end to accomplish the same behavior
+    // Because there isn't currently an easy way to say "play this animation a single time and stop at the end", this just adds a bunch of the same frame at the end to accomplish the same behavior
     mainJumpLeft = animation.createAnimation(ActionKind.JumpingLeft, 100)
     animation.attachAnimation(hero, mainJumpLeft)
     mainJumpLeft.addAnimationFrame(img`
@@ -1048,16 +1066,6 @@ f d d f f f b b f f f f d d f .
 . . . f f f f f . f f f f . . . 
 `)
 }
-sprites.onOverlap(SpriteKind.Player, SpriteKind.Goal, function (sprite, otherSprite) {
-    info.changeLifeBy(1)
-    currentLevel += 1
-    if (currentLevel < levelMaps.length) {
-        game.splash("Next level unlocked!")
-        initializeLevel(currentLevel)
-    } else {
-        game.over(true, effects.confetti)
-    }
-})
 function clearGame () {
     for (let value4 of sprites.allOfKind(SpriteKind.Bumper)) {
         value4.destroy()
@@ -1072,22 +1080,11 @@ function clearGame () {
         value7.destroy()
     }
 }
-sprites.onOverlap(SpriteKind.Player, SpriteKind.Bumper, function (sprite, otherSprite) {
-    if (sprite.vy > 0 && !(sprite.isHittingTile(CollisionDirection.Bottom)) || sprite.y < otherSprite.top) {
-        otherSprite.destroy(effects.ashes, 250)
-        otherSprite.vy = -50
-        sprite.vy = -2 * pixelsToMeters
-        info.changeScoreBy(1)
-        music.powerUp.play()
-    } else {
-        info.changeLifeBy(-1)
-        sprite.say("Ow!", invincibilityPeriod)
-        music.powerDown.play()
-    }
-    pause(invincibilityPeriod)
-})
-controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
-    attemptJump()
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Flier, function (sprite, otherSprite) {
+    info.changeLifeBy(-1)
+    sprite.say("Ow!", invincibilityPeriod * 1.5)
+    music.powerDown.play()
+    pause(invincibilityPeriod * 1.5)
 })
 function createEnemies () {
     // enemy that moves back and forth
@@ -1113,9 +1110,9 @@ function createEnemies () {
         value.place(bumper)
         bumper.ay = gravity
         if (Math.percentChance(50)) {
-            bumper.vx = Math.randomRange(30, 60)
+            bumper.vx = randint(30, 60)
         } else {
-            bumper.vx = Math.randomRange(-60, -30)
+            bumper.vx = randint(-60, -30)
         }
     }
     // enemy that flies at player
@@ -1143,6 +1140,11 @@ function createEnemies () {
         animation.attachAnimation(flier, flierIdle)
     }
 }
+controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
+    if (!(hero.isHittingTile(CollisionDirection.Bottom))) {
+        hero.vy += 80
+    }
+})
 function showInstruction (text: string) {
     game.showLongText(text, DialogLayout.Bottom)
     music.baDing.play()
@@ -1154,6 +1156,16 @@ function initializeHeroAnimations () {
     animateCrouch()
     animateJumps()
 }
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Goal, function (sprite, otherSprite) {
+    info.changeLifeBy(1)
+    currentLevel += 1
+    if (currentLevel < levelMaps.length) {
+        game.splash("Next level unlocked!")
+        initializeLevel(currentLevel)
+    } else {
+        game.over(true, effects.confetti)
+    }
+})
 function createPlayer (player2: Sprite) {
     player2.ay = gravity
     scene.cameraFollowSprite(player2)
@@ -1162,12 +1174,6 @@ function createPlayer (player2: Sprite) {
     info.setLife(3)
     info.setScore(0)
 }
-sprites.onOverlap(SpriteKind.Player, SpriteKind.Coin, function (sprite, otherSprite) {
-    otherSprite.destroy(effects.trail, 250)
-    otherSprite.y += -3
-    info.changeScoreBy(3)
-    music.baDing.play()
-})
 function initializeLevel (level: number) {
     clearGame()
     scene.setTileMap(levelMaps[level])
@@ -1176,15 +1182,6 @@ function initializeLevel (level: number) {
     createEnemies()
     spawnGoals()
 }
-controller.up.onEvent(ControllerButtonEvent.Pressed, function () {
-    attemptJump()
-})
-sprites.onOverlap(SpriteKind.Player, SpriteKind.Flier, function (sprite, otherSprite) {
-    info.changeLifeBy(-1)
-    sprite.say("Ow!", invincibilityPeriod * 1.5)
-    music.powerDown.play()
-    pause(invincibilityPeriod * 1.5)
-})
 function spawnGoals () {
     scene.placeOnRandomTile(sprites.create(img`
 . . . . . . . . . . . . . . . . 
@@ -1269,8 +1266,7 @@ hero = sprites.create(img`
 . . . f b a a f f b a a f . . . 
 . . . . f f f . . f f f . . . . 
 `, SpriteKind.Player)
-// how long to pause between each contact with a
-// single enemy
+// how long to pause between each contact with a single enemy
 invincibilityPeriod = 600
 pixelsToMeters = 30
 gravity = 9.81 * pixelsToMeters
@@ -1372,9 +1368,9 @@ game.onUpdate(function () {
 game.onUpdate(function () {
     for (let value8 of sprites.allOfKind(SpriteKind.Bumper)) {
         if (value8.isHittingTile(CollisionDirection.Left)) {
-            value8.vx = Math.randomRange(30, 60)
+            value8.vx = randint(30, 60)
         } else if (value8.isHittingTile(CollisionDirection.Right)) {
-            value8.vx = Math.randomRange(-60, -30)
+            value8.vx = randint(-60, -30)
         }
     }
 })
