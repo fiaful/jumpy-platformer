@@ -1154,11 +1154,11 @@ function initializeHeroAnimations () {
     animateCrouch()
     animateJumps()
 }
-function createPlayer (player: Sprite) {
-    player.ay = gravity
-    scene.cameraFollowSprite(player)
-    controller.moveSprite(player, 100, 0)
-    player.z = 5
+function createPlayer (player2: Sprite) {
+    player2.ay = gravity
+    scene.cameraFollowSprite(player2)
+    controller.moveSprite(player2, 100, 0)
+    player2.z = 5
     info.setLife(3)
     info.setScore(0)
 }
